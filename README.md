@@ -58,4 +58,4 @@ To run the system locally, ensure you start the services in the following order:
 2. **micro-account**, **micro-plot**, and **micro-employee** (Order does not matter as long as Eureka is up)
 3. **micro-apiGateway**
 
-Each service uses its respective `pom.xml` configurations and can be containerized using the integrated `jib-maven-plugin`.
+Each service can be containerized using its Dockerfile and run independently using Docker.
