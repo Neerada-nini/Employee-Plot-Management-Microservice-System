@@ -27,8 +27,8 @@ graph TD
 
     EmpService -->|Feign: /api/account| AccService
     EmpService -->|Feign: /api/plot| PlotService
-    AccService -.->|Feign: Check Employee /api/employee/{id}| EmpService
-    PlotService -.->|Feign: Check Employee /api/employee/{id}| EmpService
+    AccService -.->|"Feign: Check Employee /api/employee/{id}"| EmpService
+    PlotService -.->|"Feign: Check Employee /api/employee/{id}"| EmpService
 
     EmpService --- DB1[(MySQL: microemployee)]
     AccService --- DB2[(MySQL: microaccount)]
@@ -36,7 +36,6 @@ graph TD
 ```
 
 ---
-
 
 ## Microservices Inventory & Roles
 
