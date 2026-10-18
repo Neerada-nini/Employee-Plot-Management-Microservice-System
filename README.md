@@ -12,7 +12,7 @@ The system is organized into decoupled microservices communicating synchronously
 graph TD
     Client["Client / Postman / Frontend"] -->|HTTP:9000| Gateway["API Gateway (micro-apiGateway:9000)"]
     
-    subgraph Service Discovery
+    subgraph Discovery ["Service Discovery"]
         Eureka["Eureka Server (eureka-server:8761)"]
     end
 
@@ -27,8 +27,8 @@ graph TD
 
     EmpService -->|Feign: /api/account| AccService
     EmpService -->|Feign: /api/plot| PlotService
-    AccService -.->|Feign: Check Employee /api/employee/{id}| EmpService
-    PlotService -.->|Feign: Check Employee /api/employee/{id}| EmpService
+    AccService -.->|Feign: Check Employee /api/employee/:id| EmpService
+    PlotService -.->|Feign: Check Employee /api/employee/:id| EmpService
 
     EmpService --- DB1[(MySQL: microemployee)]
     AccService --- DB2[(MySQL: microaccount)]
@@ -83,13 +83,13 @@ sequenceDiagram
     ACC->>EMP: Feign: GET /api/employee/{id} (Validate employee exists)
     EMP-->>ACC: 200 OK (Employee found)
     ACC->>ACC: Save AccountEntity in microaccount DB
-    ACC-->>EMP: 201 Created (ApiResponse<AccountDTO>)
+    ACC-->>EMP: 201 Created (ApiResponse[AccountDTO])
     
     EMP->>PLOT: Feign: POST /api/plot (PlotDTO + generated employeeId)
     PLOT->>EMP: Feign: GET /api/employee/{id} (Validate employee exists)
     EMP-->>PLOT: 200 OK (Employee found)
     PLOT->>PLOT: Save PlotEntity in microplot DB
-    PLOT-->>EMP: 201 Created (ApiResponse<PlotDTO>)
+    PLOT-->>EMP: 201 Created (ApiResponse[PlotDTO])
 
     EMP-->>GW: 200 OK (ApiResponse with saved EmployeeEntity)
     GW-->>Client: 200 OK
