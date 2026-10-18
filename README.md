@@ -9,30 +9,8 @@ A distributed, microservice-based enterprise system designed to manage Employee 
 The system is organized into decoupled microservices communicating synchronously via **Spring Cloud OpenFeign** and exposed through a single entry point managed by **Spring Cloud Gateway**. Service discovery and health monitoring are orchestrated centrally through **Netflix Eureka Server**.
 
 ```mermaid
-graph TD
-    Client["Client / Postman / Frontend"] -->|HTTP:9000| Gateway["API Gateway (micro-apiGateway:9000)"]
-    
-    subgraph Service Discovery
-        Eureka["Eureka Server (eureka-server:8761)"]
-    end
-
-    Gateway -.->|Discovery Lookup| Eureka
-    EmpService -.->|Registers| Eureka
-    AccService -.->|Registers| Eureka
-    PlotService -.->|Registers| Eureka
-
-    Gateway -->|/api/employee/**| EmpService["Employee Service (MICRO-EMPLOYEE:8081)"]
-    Gateway -->|/api/account/**| AccService["Account Service (MICRO-ACCOUNT:8082)"]
-    Gateway -->|/api/plot/**| PlotService["Plot Service (MICRO-PLOT:8083)"]
-
-    EmpService -->|Feign: /api/account| AccService
-    EmpService -->|Feign: /api/plot| PlotService
-    AccService -.->|Feign: Check Employee /api/employee/{id}| EmpService
-    PlotService -.->|Feign: Check Employee /api/employee/{id}| EmpService
-
-    EmpService --- DB1[(MySQL: microemployee)]
-    AccService --- DB2[(MySQL: microaccount)]
-    PlotService --- DB3[(MySQL: microplot)]
+AccService -.->|Feign: Check Employee by ID| EmpService
+PlotService -.->|Feign: Check Employee by ID| EmpService
 ```
 
 ---
