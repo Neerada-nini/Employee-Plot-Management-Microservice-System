@@ -25,10 +25,10 @@ graph TD
     Gateway -->|/api/account/**| AccService["Account Service (MICRO-ACCOUNT:8082)"]
     Gateway -->|/api/plot/**| PlotService["Plot Service (MICRO-PLOT:8083)"]
 
-    EmpService -->|Feign: /api/account| AccService
+       EmpService -->|Feign: /api/account| AccService
     EmpService -->|Feign: /api/plot| PlotService
-    AccService -.->|Feign: Check Employee /api/employee/:id| EmpService
-    PlotService -.->|Feign: Check Employee /api/employee/:id| EmpService
+    AccService -.->|"Feign: Check Employee /api/employee/{id}"| EmpService
+    PlotService -.->|"Feign: Check Employee /api/employee/{id}"| EmpService
 
     EmpService --- DB1[(MySQL: microemployee)]
     AccService --- DB2[(MySQL: microaccount)]
