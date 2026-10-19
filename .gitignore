@@ -27,3 +27,12 @@ application-local.yaml
 # OS files
 .DS_Store
 Thumbs.db
+
+# Database backups
+/backups/
+*.sql
+
+# Local environment configuration
+.env
+.env.*
+!.env.example

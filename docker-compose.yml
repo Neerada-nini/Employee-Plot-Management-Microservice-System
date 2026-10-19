@@ -1,0 +1,122 @@
+
+services:
+  mysql:
+    image: mysql:8.0.44
+    container_name: employee-plot-mysql-compose
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - employee_plot_mysql_data:/var/lib/mysql
+      - ./backups/microaccount.sql:/docker-entrypoint-initdb.d/01-microaccount.sql:ro
+      - ./backups/microemployee.sql:/docker-entrypoint-initdb.d/02-microemployee.sql:ro
+      - ./backups/microplot.sql:/docker-entrypoint-initdb.d/03-microplot.sql:ro
+    ports:
+      - "13306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    networks:
+      - employee-plot-network
+
+  eureka-server:
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    container_name: employee-plot-eureka-compose
+    restart: unless-stopped
+    ports:
+      - "18761:8761"
+    networks:
+      - employee-plot-network
+
+  micro-employee:
+    build:
+      context: ./micro-employee
+      dockerfile: Dockerfile
+    container_name: employee-plot-employee-compose
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/microemployee
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "18081:8081"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - employee-plot-network
+
+  micro-account:
+    build:
+      context: ./micro-account
+      dockerfile: dockerfile
+    container_name: employee-plot-account-compose
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/microaccount
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "18082:8082"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - employee-plot-network
+
+  micro-plot:
+    build:
+      context: ./micro-plot
+      dockerfile: Dockerfile
+    container_name: employee-plot-plot-compose
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/microplot
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "18083:8083"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - employee-plot-network
+
+  micro-apigateway:
+    build:
+      context: ./micro-apiGateway
+      dockerfile: Dockerfile
+    container_name: employee-plot-gateway-compose
+    restart: unless-stopped
+    environment:
+      EUREKA_CLIENT_SERVICE_URL_DEFAULTZONE: http://eureka-server:8761/eureka/
+    ports:
+      - "19000:9000"
+    depends_on:
+      - eureka-server
+      - micro-employee
+      - micro-account
+      - micro-plot
+    networks:
+      - employee-plot-network
+
+networks:
+  employee-plot-network:
+    driver: bridge
+
+volumes:
+  employee_plot_mysql_data:
