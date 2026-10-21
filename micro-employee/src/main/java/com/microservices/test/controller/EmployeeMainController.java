@@ -40,7 +40,7 @@ public class EmployeeMainController {
 	
    ApiResponse<List<EmployeeEntity>> getAllEmployee= empService.getAllEmployees();
 		
-		return ResponseEntity.status(HttpStatus.FOUND).body(getAllEmployee);
+   return ResponseEntity.ok(getAllEmployee);
 		
 	}
 	
@@ -48,8 +48,7 @@ public class EmployeeMainController {
 	public ResponseEntity<ApiResponse<EmployeeEntity>> getSingleEmployee(@PathVariable("id") String id){
 		
 		ApiResponse<EmployeeEntity> savedSingleEmployeeResponse = empService.getSingleEmployee(id);
-		return ResponseEntity.status(HttpStatus.CREATED).body(savedSingleEmployeeResponse);
-		
+		return ResponseEntity.ok(savedSingleEmployeeResponse);
 	}
 	
 	
