@@ -1,6 +1,7 @@
 
 package com.microservices.test.exceptions;
 
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -16,8 +17,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import com.microservices.test.ApiResponse;
+import com.microservices.test.CorrelationIdFilter;
 
 import feign.FeignException;
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -25,14 +28,24 @@ public class GlobalExceptionHandler {
     private static final Logger logger =
             LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
+    private String getCorrelationId(HttpServletRequest request) {
+        return (String) request.getAttribute(
+                CorrelationIdFilter.CORRELATION_ID_HEADER);
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Map<String, Object>>> handleMalformedRequest(
-            HttpMessageNotReadableException e) {
+            HttpMessageNotReadableException e,
+            HttpServletRequest request) {
 
         ApiResponse<Map<String, Object>> apiResponse =
                 new ApiResponse<>(
+                        Instant.now(),
                         "ERROR",
+                        "MALFORMED_REQUEST",
                         "Malformed or invalid request body",
+                        request.getRequestURI(),
+                        getCorrelationId(request),
                         Collections.emptyMap()
                 );
 
@@ -43,18 +56,26 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationException(
-            MethodArgumentNotValidException e) {
+            MethodArgumentNotValidException e,
+            HttpServletRequest request) {
 
         Map<String, String> errors = new HashMap<>();
 
         for (FieldError fieldError : e.getBindingResult().getFieldErrors()) {
-            errors.put(fieldError.getField(), fieldError.getDefaultMessage());
+            errors.put(
+                    fieldError.getField(),
+                    fieldError.getDefaultMessage()
+            );
         }
 
         ApiResponse<Map<String, String>> apiResponse =
                 new ApiResponse<>(
+                        Instant.now(),
                         "ERROR",
-                        "Validation Error",
+                        "VALIDATION_ERROR",
+                        "Request validation failed",
+                        request.getRequestURI(),
+                        getCorrelationId(request),
                         errors
                 );
 
@@ -65,12 +86,17 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Map<String, Object>>> handleResourceNotFoundException(
-            ResourceNotFoundException e) {
+            ResourceNotFoundException e,
+            HttpServletRequest request) {
 
         ApiResponse<Map<String, Object>> apiResponse =
                 new ApiResponse<>(
+                        Instant.now(),
                         "ERROR",
+                        "RESOURCE_NOT_FOUND",
                         e.getMessage(),
+                        request.getRequestURI(),
+                        getCorrelationId(request),
                         Collections.emptyMap()
                 );
 
@@ -81,31 +107,37 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(FeignException.class)
     public ResponseEntity<ApiResponse<Map<String, Object>>> handleFeignException(
-            FeignException e) {
+            FeignException e,
+            HttpServletRequest request) {
 
         logger.error("Error communicating with a downstream service", e);
 
-        String url = e.request() != null ? e.request().url() : "";
-        String employeeId = url.substring(url.lastIndexOf("/") + 1);
-
         HttpStatus httpStatus = HttpStatus.resolve(e.status());
 
-        if (httpStatus == null) {
-            httpStatus = HttpStatus.INTERNAL_SERVER_ERROR;
+        if (httpStatus == null || httpStatus.is5xxServerError()) {
+            httpStatus = HttpStatus.BAD_GATEWAY;
         }
 
+        String code;
         String message;
 
-        if (httpStatus == HttpStatus.NOT_FOUND) {
-            message = "Employee not found with id " + employeeId;
+        if (e.status() == 404) {
+            code = "DOWNSTREAM_RESOURCE_NOT_FOUND";
+            message = "The requested resource was not found in the downstream service";
+            httpStatus = HttpStatus.NOT_FOUND;
         } else {
-            message = "Error while communicating with Employee Service";
+            code = "DOWNSTREAM_SERVICE_ERROR";
+            message = "Error while communicating with the downstream service";
         }
 
         ApiResponse<Map<String, Object>> apiResponse =
                 new ApiResponse<>(
+                        Instant.now(),
                         "ERROR",
+                        code,
                         message,
+                        request.getRequestURI(),
+                        getCorrelationId(request),
                         Collections.emptyMap()
                 );
 
@@ -116,14 +148,19 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Map<String, Object>>> handleGenericException(
-            Exception e) {
+            Exception e,
+            HttpServletRequest request) {
 
         logger.error("Unexpected error while processing request", e);
 
         ApiResponse<Map<String, Object>> apiResponse =
                 new ApiResponse<>(
+                        Instant.now(),
                         "ERROR",
+                        "INTERNAL_SERVER_ERROR",
                         "Something went wrong",
+                        request.getRequestURI(),
+                        getCorrelationId(request),
                         Collections.emptyMap()
                 );
 

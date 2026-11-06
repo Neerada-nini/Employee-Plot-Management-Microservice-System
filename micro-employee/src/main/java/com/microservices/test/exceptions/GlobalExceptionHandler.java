@@ -1,4 +1,5 @@
 package com.microservices.test.exceptions;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -12,19 +13,31 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import com.microservices.test.ApiResponse;
+import com.microservices.test.CorrelationIdFilter;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
 	
+	private String getCorrelationId(HttpServletRequest request) {
+	    return (String) request.getAttribute(
+	           CorrelationIdFilter.CORRELATION_ID_HEADER);
+	}
+	
 	@ExceptionHandler(HttpMessageNotReadableException.class)
 	public ResponseEntity<ApiResponse<Map<String, Object>>> handleMalformedRequest(
-	        HttpMessageNotReadableException e) {
+	        HttpMessageNotReadableException e, HttpServletRequest request) {
 
 	    ApiResponse<Map<String, Object>> apiResponse =
 	            new ApiResponse<>(
+	            		Instant.now(),
 	                    "ERROR",
+	                    "MALFORMED_REQUEST",
 	                    "Malformed or invalid request body",
+	                    request.getRequestURI(),
+	                    getCorrelationId(request),
 	                    Collections.emptyMap()
 	            );
 
@@ -38,15 +51,21 @@ public class GlobalExceptionHandler {
 	        LoggerFactory.getLogger(GlobalExceptionHandler.class);
 	
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Map<String, Object>>> handleGenericException(Exception e) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> handleGenericException(Exception e,HttpServletRequest request) {
 
     	logger.error("Unexpected error while processing request", e);
         ApiResponse<Map<String, Object>> apiResponse =
                 new ApiResponse<>(
-                        "ERROR",
+                		Instant.now(),
+	                    "ERROR",
+	                    "INTERNAL_SERVER_ERROR",
                         "Something went wrong",
-                        Collections.emptyMap()
-                );
+                        request.getRequestURI(),
+                        getCorrelationId(request),
+	                    Collections.emptyMap()
+	            );
+
+                  
 
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -56,7 +75,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationException(
-            MethodArgumentNotValidException e) {
+            MethodArgumentNotValidException e,HttpServletRequest request) {
 
         Map<String, String> errors = new HashMap<>();
 
@@ -66,8 +85,12 @@ public class GlobalExceptionHandler {
 
         ApiResponse<Map<String, String>> apiResponse =
                 new ApiResponse<>(
+                		Instant.now(),
                         "ERROR",
+                        "VALIDATION_ERROR",
                         "Validation Error",
+                        request.getRequestURI(),
+                        getCorrelationId(request),
                         errors
                 );
 
@@ -78,12 +101,16 @@ public class GlobalExceptionHandler {
     
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Map<String, Object>>> handleResourceNotFoundException(
-            ResourceNotFoundException e) {
+            ResourceNotFoundException e,HttpServletRequest request) {
 
         ApiResponse<Map<String, Object>> apiResponse =
                 new ApiResponse<>(
+                		Instant.now(),
                         "ERROR",
+                        "RESOURCE_NOT_FOUND",
                         e.getMessage(),
+                        request.getRequestURI(),
+                        getCorrelationId(request),
                         Collections.emptyMap()
                 );
 
@@ -92,3 +119,5 @@ public class GlobalExceptionHandler {
                 .body(apiResponse);
     }
 }
+
+

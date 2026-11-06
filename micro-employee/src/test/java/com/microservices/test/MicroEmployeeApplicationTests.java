@@ -3,26 +3,29 @@ package com.microservices.test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-
 import java.util.Map;
-
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import com.microservices.test.exceptions.GlobalExceptionHandler;
 
+import jakarta.servlet.http.HttpServletRequest;
+import static org.mockito.Mockito.mock;
+
 class MicroEmployeeApplicationTests {
 
     @Test
     void genericExceptionReturnsSafeInternalServerError() {
         GlobalExceptionHandler handler = new GlobalExceptionHandler();
+        
+        HttpServletRequest request = mock(HttpServletRequest.class);
 
         RuntimeException exception =
                 new RuntimeException("Sensitive internal test detail");
 
         ResponseEntity<ApiResponse<Map<String, Object>>> response =
-                handler.handleGenericException(exception);
+                handler.handleGenericException(exception, request);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR,
                 response.getStatusCode());

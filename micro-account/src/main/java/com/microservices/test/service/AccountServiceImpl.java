@@ -1,5 +1,6 @@
 package com.microservices.test.service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import com.microservices.test.ApiResponse;
+import com.microservices.test.CorrelationIdFilter;
 import com.microservices.test.dto.AccountDTO;
 import com.microservices.test.entity.AccountEntity;
 import com.microservices.test.exceptions.DuplicateResourceException;
@@ -23,6 +25,7 @@ import com.microservices.test.externalDto.EmployeeResponse;
 import com.microservices.test.externalclient.EmployeeClient;
 import com.microservices.test.repo.AccountRepo;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -40,6 +43,11 @@ public class AccountServiceImpl implements AccountService {
 	
 	@Autowired
 	private EmployeeClient employeeClient;
+	
+
+	@Autowired
+	private HttpServletRequest request;
+	
 
 	@Override
 	public ApiResponse<AccountEntity> saveAccount(AccountDTO accDTO) {
@@ -81,12 +89,26 @@ public class AccountServiceImpl implements AccountService {
 		acc.setId(UUID.randomUUID().toString());
 		acc.setDateTime(LocalDateTime.now().toString());
 		AccountEntity savedAccount = accRepo.save(acc);
-		return new ApiResponse<AccountEntity>("Success", "Account details created succesfully", savedAccount);
+		return new ApiResponse<AccountEntity>(
+				Instant.now(),
+				"SUCCESS", 
+				"ACCOUNT_CREATED",
+				"Account details created succesfully", 
+				request.getRequestURI(),
+				(String) request.getAttribute(CorrelationIdFilter.CORRELATION_ID_HEADER),
+				savedAccount);
 	}
 	@Override
 	public ApiResponse<List<AccountEntity>> getAllAccounts() {
 		List<AccountEntity> allSavedAccounts = accRepo.findAll();
-		return new ApiResponse<List<AccountEntity>>("Success", "Account data retrived", allSavedAccounts);
+		return new ApiResponse<List<AccountEntity>>(
+				Instant.now(),
+				"SUCCESS",
+				"ACOOUNT_DATA_RETRIVED", 
+				"Account details have been retrived successfully",
+				request.getRequestURI(),
+				(String) request.getAttribute(CorrelationIdFilter.CORRELATION_ID_HEADER),
+				allSavedAccounts);
 		
 	}
 
@@ -97,8 +119,12 @@ public class AccountServiceImpl implements AccountService {
 	            .orElseThrow(() -> new ResourceNotFoundException("Account not found with id: " + id));
 
 	    return new ApiResponse<>(
+	    		Instant.now(),
 	            "SUCCESS",
-	            "ACCOUNT FOUND",
+	            "ACCOUNT_FOUND",
+	            "Account data has been found successfully",
+	            request.getRequestURI(),
+				(String) request.getAttribute(CorrelationIdFilter.CORRELATION_ID_HEADER),
 	            account
 	    );
 	}
@@ -109,8 +135,12 @@ public class AccountServiceImpl implements AccountService {
 	    accRepo.deleteByEmployeeId(id);
 
 	    return new ApiResponse<>(
+	    		Instant.now(),
 	            "SUCCESS",
-	            "EMPLOYEE ACCOUNT DELETED SUCCESSFULLY",
+	            "ACCOUNT_DELETED",
+	            "Employee account delted succesfully",
+	            request.getRequestURI(),
+				(String) request.getAttribute(CorrelationIdFilter.CORRELATION_ID_HEADER),
 	            Collections.emptyMap()
 	    );
 	}

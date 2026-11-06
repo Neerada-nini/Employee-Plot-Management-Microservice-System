@@ -1,5 +1,6 @@
 package com.microservices.test.service;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
@@ -8,11 +9,10 @@ import java.util.UUID;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
 import com.microservices.test.ApiResponse;
+import com.microservices.test.CorrelationIdFilter;
 import com.microservices.test.dto.EmployeeDTO;
 import com.microservices.test.dto.external.AccountDTO;
 import com.microservices.test.dto.external.PlotDTO;
@@ -25,6 +25,8 @@ import com.microservices.test.repo.EmployeeRepo;
 
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 @Service
 public class EmployeeServiceImpl implements EmployeeService{
@@ -41,7 +43,8 @@ public class EmployeeServiceImpl implements EmployeeService{
 	@Autowired
 	private PlotClient plotClient;
 	
-	
+	@Autowired
+	private HttpServletRequest request;
 	
 	@Override
 	public ApiResponse<EmployeeEntity> saveEmployee(EmployeeDTO empDTO) {
@@ -50,7 +53,14 @@ public class EmployeeServiceImpl implements EmployeeService{
 		emp.setId(UUID.randomUUID().toString());
 		emp.setDateTime(LocalDateTime.now().toString());
 		EmployeeEntity savedEmployee = empRepo.save(emp);
-		return new ApiResponse<EmployeeEntity>("SUCCESS","EMPLOYEE DATA CREATED",savedEmployee);
+		return new ApiResponse<EmployeeEntity>(
+				Instant.now(),
+				"SUCCESS",
+				"EMPLOYEE_CREATED",
+				"Employee data has been created successfully",
+				request.getRequestURI(),
+				(String) request.getAttribute(CorrelationIdFilter.CORRELATION_ID_HEADER),
+				savedEmployee);
 	}
 
 	@Override
@@ -58,9 +68,23 @@ public class EmployeeServiceImpl implements EmployeeService{
 	List<EmployeeEntity> employee=empRepo.findAll();
 	
 	if(employee.isEmpty()) {
-		return new ApiResponse<List<EmployeeEntity>>("Success", "EMPLOYEE DATA NOT FOUND" , employee);
+		return new ApiResponse<List<EmployeeEntity>>(
+				Instant.now(),
+				"SUCCESS", 
+				"EMPLOYEES_EMPTY",
+				"No employee records found",
+				request.getRequestURI(),
+				(String) request.getAttribute(CorrelationIdFilter.CORRELATION_ID_HEADER),
+                employee);
 	} 
-		return new ApiResponse<List<EmployeeEntity>>("Success", "EMPLOYE DATA FOUND" , employee);
+	return new ApiResponse<>(
+		    Instant.now(),
+		    "SUCCESS",
+		    "EMPLOYEES_RETRIEVED",
+		    "Employees deta has been found",
+		    request.getRequestURI(),
+			(String) request.getAttribute(CorrelationIdFilter.CORRELATION_ID_HEADER),
+		    employee);
 	}
 
 	@Override
@@ -72,10 +96,13 @@ public class EmployeeServiceImpl implements EmployeeService{
 	            );
 
 	    return new ApiResponse<>(
+	    		Instant.now(),
 	            "SUCCESS",
-	            "EMPLOYEE FOUND",
-	            employee
-	    );
+	            "EMPLOYEE_RETRIEVED",
+	            "Single employee data has been found",
+	            request.getRequestURI(),
+				(String) request.getAttribute(CorrelationIdFilter.CORRELATION_ID_HEADER),
+	            employee);
 	}
 
 	@Override
@@ -108,8 +135,12 @@ public class EmployeeServiceImpl implements EmployeeService{
 	    System.out.println("Plot Saved");
 
 	    return new ApiResponse<>(
+	    		Instant.now(),
 	            "SUCCESS",
+	            "EMPLOYEE_FULL_DATA_CREATED",
 	            "Employee full data saved",
+	            request.getRequestURI(),
+				(String) request.getAttribute(CorrelationIdFilter.CORRELATION_ID_HEADER),
 	            employeeData
 	    );
 	}
@@ -121,7 +152,14 @@ public class EmployeeServiceImpl implements EmployeeService{
 		accountClient.deleteByEmployeeId(id);
 		
 		plotClient.deleteByEmployeeId(id);
-		return new ApiResponse<Object>("success","employee Deleted Succesfully", Collections.emptyMap());
+		return new ApiResponse<Object>(
+				Instant.now(),
+				"SUCCESS",
+				"EMPLOYEE_DELETED",
+				"Employee deleted successfully",
+				request.getRequestURI(),
+				(String) request.getAttribute(CorrelationIdFilter.CORRELATION_ID_HEADER),
+				Collections.emptyMap());
 	}
 	
 
